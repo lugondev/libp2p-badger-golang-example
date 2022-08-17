@@ -7,27 +7,46 @@ them with the `-mode` flag that accepts either `host` or `client` as value.
 
 ## Usage
 
-Have two terminal windows open in the `examples/ping` directory. In the first
-one, run:
+Run host:
 
-```
-$ go run cmd/ping.go -mode host
+```shell
+# start host
+go run cmd/ping.go -mode host -data-dir ./node1
 ```
 
 And then copy one of the "I'm listening on" addresses. In this example, we use
 the `127.0.0.1` one which ends up being:
 
 ```
-/ip4/192.168.30.104/tcp/9000/p2p/QmSA1gi65YswUKrTGj3SNsc5Y7xUJS5RW3xcHK8Lncvmtj
+/ip4/127.0.0.1/tcp/9000/p2p/QmeEJ1NFqgziZfAEt8Wz8ygx43r4e7i5RgGYxvHXjZtf9M
 ```
 
-Now in the second terminal window, run:
+Run client:
 
-```
-$ go run cmd/ping.go -mode client -data-dir ./node1 -host /ip4/192.168.30.104/tcp/9000/p2p/QmSA1gi65YswUKrTGj3SNsc5Y7xUJS5RW3xcHK8Lncvmtj
+```shell
+#start client
+go run cmd/ping.go -mode client -data-dir ./node1
 ```
 
-Start server, run:
+then:
+
+```shell
+curl --request POST \
+  --url http://localhost:2221/p2p/test \
+  --header 'Content-Type: application/json' \
+  --data '{
+	"host":"/ip4/127.0.0.1/tcp/9000/p2p/QmeEJ1NFqgziZfAEt8Wz8ygx43r4e7i5RgGYxvHXjZtf9M"
+}'
 ```
-$ SERVER_PORT=2221 DATA_DIR=./node1 go run cmd/main.go
+
+Start node, run:
+
+```shell
+#node1
+SERVER_PORT=2222 RAFT_NODE_ID=node2 RAFT_PORT=1112 RAFT_VOL_DIR=node_2_data go run cmd/main.go
+```
+
+```shell
+#node2
+SERVER_PORT=2223 RAFT_NODE_ID=node3 RAFT_PORT=1113 RAFT_VOL_DIR=node_3_data go run cmd/main.go
 ```

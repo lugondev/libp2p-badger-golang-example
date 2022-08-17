@@ -1,9 +1,14 @@
 package store_handler
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/hashicorp/raft"
 	"github.com/labstack/echo/v4"
+	"libp2p-badger/fsm"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Delete handling remove data from raft cluster. Delete will invoke raft.Apply to make this deleted in all cluster
@@ -13,6 +18,42 @@ func (h handler) Delete(eCtx echo.Context) error {
 	if key == "" {
 		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
 			"error": "key is empty",
+		})
+	}
+
+	if h.raft.State() != raft.Leader {
+		fmt.Println("I'm follower")
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": "not the leader",
+		})
+	} else {
+		fmt.Println("I'm leader")
+	}
+
+	payload := fsm.CommandPayload{
+		Operation: "DELETE",
+		Key:       key,
+		Value:     nil,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": fmt.Sprintf("error preparing remove data payload: %s", err.Error()),
+		})
+	}
+
+	applyFuture := h.raft.Apply(data, 500*time.Millisecond)
+	if err := applyFuture.Error(); err != nil {
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": fmt.Sprintf("error removing data in raft cluster: %s", err.Error()),
+		})
+	}
+
+	_, ok := applyFuture.Response().(*fsm.ApplyResponse)
+	if !ok {
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": fmt.Sprintf("error response is not match apply response"),
 		})
 	}
 

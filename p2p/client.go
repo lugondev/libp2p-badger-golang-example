@@ -3,16 +3,18 @@ package p2p
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/raft"
 	"github.com/libp2p/go-libp2p-core/peer"
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/multiformats/go-multiaddr"
-	"libp2p-badger/db"
+	"libp2p-badger/fsm"
 	"strconv"
 	"time"
 )
 
-func StartClient(host string, pingCount int, badger *db.Badger) {
+func StartClient(host string, pingCount int, raft *raft.Raft) {
 	fmt.Println("Launching p2p")
 	client := CreatePeer("/ip4/0.0.0.0/tcp/9001")
 	fmt.Printf("Hello World, my hosts ID is %s\n", client.ID().Pretty())
@@ -53,7 +55,6 @@ func StartClient(host string, pingCount int, badger *db.Badger) {
 		time.Sleep(betweenPingsSleep)
 		startTime := time.Now()
 		err = rpcClient.Call(peerInfo.ID, "PingService", "Ping", args, &reply)
-		//fmt.Println(string(reply.Data))
 
 		if err != nil {
 			panic(err)
@@ -61,10 +62,28 @@ func StartClient(host string, pingCount int, badger *db.Badger) {
 		if args.Key != reply.Key {
 			panic("Received wrong key!")
 		} else {
-			err := badger.SetArr(reply.Key, string(reply.Data))
+
+			payload := fsm.CommandPayload{
+				Operation: "SET_ARR",
+				Key:       reply.Key,
+				Value:     reply.Data,
+			}
+			data, err := json.Marshal(payload)
 			if err != nil {
-				fmt.Println("error SetArr:", reply.Key)
-				panic(err)
+				fmt.Printf("error preparing remove data payload: %s\n", err.Error())
+				return
+			}
+
+			applyFuture := raft.Apply(data, 500*time.Millisecond)
+			if err := applyFuture.Error(); err != nil {
+				fmt.Printf("error removing data in raft cluster: %s\n", err.Error())
+				return
+			}
+
+			_, ok := applyFuture.Response().(*fsm.ApplyResponse)
+			if !ok {
+				fmt.Printf("error response is not match apply response\n")
+				return
 			}
 		}
 		endTime := time.Now()

@@ -30,7 +30,7 @@ func StartHost() {
 		panic(err)
 	}
 
-	fmt.Println("Done")
+	fmt.Println("Done: host is started")
 
 	for {
 		time.Sleep(time.Second * 1)

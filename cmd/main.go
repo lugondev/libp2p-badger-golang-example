@@ -4,37 +4,29 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/spf13/viper"
+	"libp2p-badger/fsm"
 	"libp2p-badger/server"
+	"libp2p-badger/types"
 	"log"
 	"os"
 )
 
 const (
 	serverPort = "SERVER_PORT"
-	dataDir    = "DATA_DIR"
+
+	raftNodeId = "RAFT_NODE_ID"
+	raftPort   = "RAFT_PORT"
+	raftVolDir = "RAFT_VOL_DIR"
 )
 
 var confKeys = []string{
 	serverPort,
-	dataDir,
+
+	raftNodeId,
+	raftPort,
+	raftVolDir,
 }
 
-type ConfigServer struct {
-	Port int `mapstructure:"port"`
-}
-
-type ConfigDB struct {
-	NodeId    string `mapstructure:"node_id"`
-	VolumeDir string `mapstructure:"volume_dir"`
-}
-
-type Config struct {
-	Server ConfigServer `mapstructure:"server"`
-	DB     ConfigDB     `mapstructure:"db"`
-}
-
-// main entry point of application start
-// run using CONFIG=config.yaml ./program
 func main() {
 
 	var v = viper.New()
@@ -44,20 +36,21 @@ func main() {
 		return
 	}
 
-	conf := Config{
-		Server: ConfigServer{
+	conf := types.Config{
+		Server: types.ConfigServer{
 			Port: v.GetInt(serverPort),
 		},
-		DB: ConfigDB{
-			NodeId:    "",
-			VolumeDir: v.GetString(dataDir),
+		Raft: types.ConfigRaft{
+			NodeId:    v.GetString(raftNodeId),
+			Port:      v.GetInt(raftPort),
+			VolumeDir: v.GetString(raftVolDir),
 		},
 	}
 
 	log.Printf("%+v\n", conf)
 
 	// Preparing badgerDB
-	badgerOpt := badger.DefaultOptions(conf.DB.VolumeDir)
+	badgerOpt := badger.DefaultOptions(conf.Raft.VolumeDir)
 	badgerDB, err := badger.Open(badgerOpt)
 	if err != nil {
 		log.Fatal(err)
@@ -70,7 +63,14 @@ func main() {
 		}
 	}()
 
-	srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB)
+	raftServer, err := fsm.NewRaft(badgerDB, &conf)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB, raftServer, &conf)
+	fmt.Println("Server is starting...")
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}

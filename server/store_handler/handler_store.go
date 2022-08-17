@@ -1,17 +1,20 @@
 package store_handler
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/raft"
 	"github.com/labstack/echo/v4"
+	"libp2p-badger/fsm"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // requestStore payload for storing new data in raft cluster
 type requestStore struct {
-	Key      string      `json:"key"`
-	Value    interface{} `json:"value"`
-	IsAppend bool        `json:"isAppend"`
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
 }
 
 // Store handling save to raft cluster. Store will invoke raft.Apply to make this stored in all cluster
@@ -30,25 +33,42 @@ func (h handler) Store(eCtx echo.Context) error {
 			"error": "key is empty",
 		})
 	}
-	var err error
-	if form.IsAppend {
-		fmt.Println("append data into DB")
-		err = h.DbHandler.SetArr(form.Key, form.Value)
+
+	if h.raft.State() != raft.Leader {
+		fmt.Println("I'm follower")
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": "not the leader",
+		})
 	} else {
-		err = h.DbHandler.Set(form.Key, form.Value)
+		fmt.Println("I'm leader")
 	}
 
+	payload := fsm.CommandPayload{
+		Operation: "SET",
+		Key:       form.Key,
+		Value:     form.Value,
+	}
+
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
 			"error": fmt.Sprintf("error preparing saving data payload: %s", err.Error()),
 		})
 	}
 
-	//if err := applyFuture.Error(); err != nil {
-	//	return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
-	//		"error": fmt.Sprintf("error persisting data in raft cluster: %s", err.Error()),
-	//	})
-	//}
+	applyFuture := h.raft.Apply(data, 500*time.Millisecond)
+	if err := applyFuture.Error(); err != nil {
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": fmt.Sprintf("error persisting data in raft cluster: %s", err.Error()),
+		})
+	}
+
+	_, ok := applyFuture.Response().(*fsm.ApplyResponse)
+	if !ok {
+		return eCtx.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"error": fmt.Sprintf("error response is not match apply response"),
+		})
+	}
 
 	return eCtx.JSON(http.StatusOK, map[string]interface{}{
 		"message": "success persisting data",

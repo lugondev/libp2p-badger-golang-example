@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/dgraph-io/badger/v2"
-	"libp2p-badger/db"
+	"libp2p-badger/fsm"
 	"libp2p-badger/p2p"
+	"libp2p-badger/server"
+	"libp2p-badger/types"
 	"log"
 	"os"
 )
@@ -14,12 +16,9 @@ func main() {
 
 	var mode string
 	var dataDir string
-	var hostAddress string
-	var count int
+
 	flag.StringVar(&mode, "mode", "", "host or client mode")
 	flag.StringVar(&dataDir, "data-dir", "", "data dir")
-	flag.StringVar(&hostAddress, "host", "", "address of host to connect to")
-	flag.IntVar(&count, "count", 300, "number of pings to make")
 	flag.Parse()
 
 	if mode == "" {
@@ -31,10 +30,6 @@ func main() {
 		return
 	}
 	if mode == "client" {
-		if hostAddress == "" {
-			log.Fatal("You need to specify '-host' when running as a client")
-		}
-
 		badgerOpt := badger.DefaultOptions(dataDir)
 		badgerDB, err := badger.Open(badgerOpt)
 		if err != nil {
@@ -48,8 +43,29 @@ func main() {
 			}
 		}()
 
-		badgerHandler := db.NewBadger(badgerDB)
-		p2p.StartClient(hostAddress, count, badgerHandler)
+		conf := types.Config{
+			Server: types.ConfigServer{
+				Port: 2221,
+			},
+			Raft: types.ConfigRaft{
+				NodeId:    "node1",
+				Port:      1111,
+				VolumeDir: dataDir,
+			},
+		}
+
+		raftServer, err := fsm.NewRaft(badgerDB, &conf)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB, raftServer, &conf)
+		fmt.Println("Server is starting...")
+		if err := srv.Start(); err != nil {
+			log.Fatal(err)
+		}
+
 		return
 	}
 	log.Fatal("Mode '" + mode + "' not recognized. It has to be either 'host' or 'client'")
