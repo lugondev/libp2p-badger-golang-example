@@ -11,7 +11,8 @@ type ConfigRaft struct {
 
 // ConfigServer configuration for server
 type ConfigServer struct {
-	Port       int `mapstructure:"port"`
+	Port       int    `mapstructure:"port"`
+	Mode       string `mapstructure:"mode"`
 	PrivateKey *ecdsa.PrivateKey
 }
 

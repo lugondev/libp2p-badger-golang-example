@@ -36,8 +36,12 @@ func main() {
 		log.Fatal(err)
 		return
 	}
+	if conf.Server.Mode == "host" {
+		go p2p.StartHost(conf.Server.PrivateKey)
+	}
 
 	srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB, raftServer, conf)
+
 	p2p.GetClient(conf.Server.PrivateKey)
 	fmt.Println("Server is starting...")
 	if err := srv.Start(); err != nil {

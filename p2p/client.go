@@ -104,5 +104,13 @@ func StartClient(host string, raft *raft.Raft, privateKey *ecdsa.PrivateKey) {
 func GetClient(privateKey *ecdsa.PrivateKey) host.Host {
 	client := CreatePeer("/ip4/0.0.0.0/tcp/9001", privateKey)
 	fmt.Printf("Hello World, my hosts ID is %s\n", client.ID().Pretty())
+	for _, addr := range client.Addrs() {
+		ipfsAddr, err := multiaddr.NewMultiaddr("/ipfs/" + client.ID().Pretty())
+		if err != nil {
+			panic(err)
+		}
+		peerAddr := addr.Encapsulate(ipfsAddr)
+		fmt.Printf("I'm listening on %s\n", peerAddr)
+	}
 	return client
 }

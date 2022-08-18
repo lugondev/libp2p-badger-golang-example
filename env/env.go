@@ -2,6 +2,7 @@ package env
 
 import (
 	"crypto/ecdsa"
+	"flag"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/spf13/viper"
@@ -30,6 +31,14 @@ var confKeys = []string{
 }
 
 func GetConf() *Config {
+	var mode string
+	flag.StringVar(&mode, "mode", "", "`host` or `client` mode")
+	flag.Parse()
+
+	if mode == "" || (mode != "host" && mode != "client") {
+		log.Fatal("You need to specify '-mode' to be either 'host' or 'client'")
+	}
+
 	var v = viper.New()
 	v.AutomaticEnv()
 	if err := v.BindEnv(confKeys...); err != nil {
@@ -55,6 +64,7 @@ func GetConf() *Config {
 		Server: ConfigServer{
 			Port:       v.GetInt(serverPort),
 			PrivateKey: privateKey,
+			Mode:       mode,
 		},
 		Raft: ConfigRaft{
 			NodeId:    v.GetString(raftNodeId),
@@ -63,7 +73,7 @@ func GetConf() *Config {
 		},
 	}
 
-	log.Printf("%+v\n", conf)
+	log.Printf("Config: %+v\n", conf)
 
 	return &conf
 }

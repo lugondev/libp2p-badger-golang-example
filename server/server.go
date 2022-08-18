@@ -45,12 +45,12 @@ func New(listenAddr string, badger *badger.DB, r *raft.Raft, conf *env.Config) *
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.GET("/debug/pprof/*", echo.WrapHandler(http.DefaultServeMux))
 
-	if r != nil {
-		raftHandler := raft_handler.New(r)
+	raftHandler := raft_handler.New(r)
+	if conf.Server.Mode == "host" {
 		e.POST("/raft/join", raftHandler.JoinRaftHandler)
 		e.POST("/raft/remove", raftHandler.RemoveRaftHandler)
-		e.GET("/raft/stats", raftHandler.StatsRaftHandler)
 	}
+	e.GET("/raft/stats", raftHandler.StatsRaftHandler)
 
 	e.POST("/p2p/test", func(eCtx echo.Context) error {
 		var form = requestP2P{}
