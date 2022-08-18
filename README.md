@@ -64,7 +64,7 @@ curl --request POST \
 Then get `Key request: {key}`. Example `Key request: QmRkJy4FA5ztudW7yR9Rf8TRKPb4vfyiaqtP75tTb3B36B-1660806288145`
 
 Check key data:
-```
+```shell
 curl --request GET \
   --url http://localhost:2221/store/QmRkJy4FA5ztudW7yR9Rf8TRKPb4vfyiaqtP75tTb3B36B-1660806288145
 ```
