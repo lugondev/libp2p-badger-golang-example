@@ -2,10 +2,12 @@ package p2p
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/raft"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/multiformats/go-multiaddr"
@@ -14,11 +16,12 @@ import (
 	"time"
 )
 
-func StartClient(host string, pingCount int, raft *raft.Raft) {
+func StartClient(host string, raft *raft.Raft, privateKey *ecdsa.PrivateKey) {
 	fmt.Println("Launching p2p")
-	client := CreatePeer("/ip4/0.0.0.0/tcp/9001")
+	client := CreatePeer("/ip4/0.0.0.0/tcp/9001", privateKey)
 	fmt.Printf("Hello World, my hosts ID is %s\n", client.ID().Pretty())
 	key := client.ID().Pretty() + "-" + strconv.FormatInt(time.Now().UnixMilli(), 10)
+
 	fmt.Printf("Key request: %s\n", key)
 	ma, err := multiaddr.NewMultiaddr(host)
 	if err != nil {
@@ -28,18 +31,15 @@ func StartClient(host string, pingCount int, raft *raft.Raft) {
 	if err != nil {
 		panic(err)
 	}
-	ctx := context.Background()
-	err = client.Connect(ctx, *peerInfo)
+	err = client.Connect(context.Background(), *peerInfo)
 	if err != nil {
 		panic(err)
 	}
 	rpcClient := gorpc.NewClient(client, protocolID)
 	numCalls := 0
 	var durations []time.Duration
-	//betweenPingsSleep := time.Second * 1
-	betweenPingsSleep := time.Second * 0
 
-	for numCalls < pingCount {
+	for numCalls < 5 {
 		var reply PingReply
 		var args PingArgs
 
@@ -52,7 +52,6 @@ func StartClient(host string, pingCount int, raft *raft.Raft) {
 		args.Data = b
 		args.Key = key
 
-		time.Sleep(betweenPingsSleep)
 		startTime := time.Now()
 		err = rpcClient.Call(peerInfo.ID, "PingService", "Ping", args, &reply)
 
@@ -100,4 +99,10 @@ func StartClient(host string, pingCount int, raft *raft.Raft) {
 	averageDuration := totalDuration / int64(len(durations))
 	fmt.Printf("Average duration for ping reply: %s\n", time.Duration(averageDuration))
 
+}
+
+func GetClient(privateKey *ecdsa.PrivateKey) host.Host {
+	client := CreatePeer("/ip4/0.0.0.0/tcp/9001", privateKey)
+	fmt.Printf("Hello World, my hosts ID is %s\n", client.ID().Pretty())
+	return client
 }

@@ -3,8 +3,8 @@ package store_handler
 import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/hashicorp/raft"
+	"libp2p-badger/env"
 	"libp2p-badger/fsm"
-	"libp2p-badger/types"
 )
 
 // handler struct handler
@@ -14,7 +14,7 @@ type handler struct {
 	DB        *badger.DB
 }
 
-func New(raft *raft.Raft, badgerDB *badger.DB, conf *types.Config) *handler {
+func New(raft *raft.Raft, badgerDB *badger.DB, conf *env.Config) *handler {
 	badgerHandler := fsm.NewBadger(badgerDB, conf)
 	return &handler{
 		DbHandler: badgerHandler,

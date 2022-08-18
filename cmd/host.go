@@ -18,6 +18,7 @@ func main() {
 		return
 	}
 
+	// Preparing badgerDB
 	badgerOpt := badger.DefaultOptions(conf.Raft.VolumeDir)
 	badgerDB, err := badger.Open(badgerOpt)
 	if err != nil {
@@ -31,16 +32,18 @@ func main() {
 		}
 	}()
 
-	raftServer, err := fsm.NewRaft(badgerDB, conf)
+	_, err = fsm.NewRaft(badgerDB, conf)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+	go p2p.StartHost(conf.Server.PrivateKey)
 
-	srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB, raftServer, conf)
-	p2p.GetClient(conf.Server.PrivateKey)
+	srv := server.New(fmt.Sprintf(":%d", conf.Server.Port), badgerDB, nil, conf)
 	fmt.Println("Server is starting...")
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}
+
+	return
 }

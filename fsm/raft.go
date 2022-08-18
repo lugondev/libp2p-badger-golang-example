@@ -5,7 +5,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
-	"libp2p-badger/types"
+	"libp2p-badger/env"
 	"log"
 	"net"
 	"os"
@@ -31,7 +31,7 @@ const (
 	raftLogCacheSize = 512
 )
 
-func NewRaft(badgerDB *badger.DB, conf *types.Config) (*raft.Raft, error) {
+func NewRaft(badgerDB *badger.DB, conf *env.Config) (*raft.Raft, error) {
 	var raftBinAddr = fmt.Sprintf("127.0.0.1:%d", conf.Raft.Port)
 	fmt.Printf("Raft Addr: %s\n", raftBinAddr)
 

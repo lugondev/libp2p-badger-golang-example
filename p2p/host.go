@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/multiformats/go-multiaddr"
@@ -8,9 +9,9 @@ import (
 	"time"
 )
 
-func StartHost() {
+func StartHost(privateKey *ecdsa.PrivateKey) {
 	log.Println("Launching hostPeer")
-	hostPeer := CreatePeer("/ip4/0.0.0.0/tcp/9000")
+	hostPeer := CreatePeer("/ip4/0.0.0.0/tcp/9000", privateKey)
 
 	log.Printf("Hello World, my hosts ID is %s\n", hostPeer.ID().Pretty())
 	for _, addr := range hostPeer.Addrs() {

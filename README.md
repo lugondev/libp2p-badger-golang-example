@@ -25,7 +25,7 @@ Run client:
 
 ```shell
 #start client
-go run cmd/ping.go -mode client -data-dir ./node1
+go run cmd/main.go
 ```
 
 then:
@@ -43,10 +43,10 @@ Start node, run:
 
 ```shell
 #node1
-SERVER_PORT=2222 RAFT_NODE_ID=node2 RAFT_PORT=1112 RAFT_VOL_DIR=node_2_data go run cmd/main.go
+SERVER_PORT=2222 RAFT_NODE_ID=node2 RAFT_PORT=1112 RAFT_VOL_DIR=node_2_data go run cmd/host.go
 ```
 
 ```shell
 #node2
-SERVER_PORT=2223 RAFT_NODE_ID=node3 RAFT_PORT=1113 RAFT_VOL_DIR=node_3_data go run cmd/main.go
+SERVER_PORT=2223 RAFT_NODE_ID=node3 RAFT_PORT=1113 RAFT_VOL_DIR=node_3_data go run cmd/host.go
 ```

@@ -6,10 +6,10 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"libp2p-badger/env"
 	"libp2p-badger/p2p"
 	"libp2p-badger/server/raft_handler"
 	"libp2p-badger/server/store_handler"
-	"libp2p-badger/types"
 	"net/http"
 	"strings"
 	"time"
@@ -38,17 +38,19 @@ type requestP2P struct {
 }
 
 // New return new server
-func New(listenAddr string, badger *badger.DB, r *raft.Raft, conf *types.Config) *srv {
+func New(listenAddr string, badger *badger.DB, r *raft.Raft, conf *env.Config) *srv {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.GET("/debug/pprof/*", echo.WrapHandler(http.DefaultServeMux))
 
-	raftHandler := raft_handler.New(r)
-	e.POST("/raft/join", raftHandler.JoinRaftHandler)
-	e.POST("/raft/remove", raftHandler.RemoveRaftHandler)
-	e.GET("/raft/stats", raftHandler.StatsRaftHandler)
+	if r != nil {
+		raftHandler := raft_handler.New(r)
+		e.POST("/raft/join", raftHandler.JoinRaftHandler)
+		e.POST("/raft/remove", raftHandler.RemoveRaftHandler)
+		e.GET("/raft/stats", raftHandler.StatsRaftHandler)
+	}
 
 	e.POST("/p2p/test", func(eCtx echo.Context) error {
 		var form = requestP2P{}
@@ -64,18 +66,20 @@ func New(listenAddr string, badger *badger.DB, r *raft.Raft, conf *types.Config)
 				"error": "host is empty",
 			})
 		}
-		p2p.StartClient(form.Host, 2, r)
+		p2p.StartClient(form.Host, r, conf.Server.PrivateKey)
 		return eCtx.JSON(http.StatusOK, map[string]interface{}{
 			"message": "Here is the p2p status",
 			"data":    "",
 		})
 	})
 
-	// Store server
+	// DB server
 	storeHandler := store_handler.New(r, badger, conf)
-	e.POST("/store", storeHandler.Store)
 	e.GET("/store/:key", storeHandler.Get)
-	e.DELETE("/store/:key", storeHandler.Delete)
+	if r != nil {
+		e.POST("/store", storeHandler.Store)
+		e.DELETE("/store/:key", storeHandler.Delete)
+	}
 
 	return &srv{
 		listenAddress: listenAddr,

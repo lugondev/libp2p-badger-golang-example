@@ -6,14 +6,14 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/hashicorp/raft"
 	"io"
-	"libp2p-badger/types"
+	"libp2p-badger/env"
 	"os"
 	"strings"
 )
 
 type BadgerFSM struct {
 	db   *badger.DB
-	conf *types.Config
+	conf *env.Config
 }
 
 // Get fetch data from badgerDB
@@ -220,7 +220,7 @@ func (b BadgerFSM) Restore(rClose io.ReadCloser) error {
 }
 
 // NewBadger implementation using badgerDB
-func NewBadger(badgerDB *badger.DB, conf *types.Config) *BadgerFSM {
+func NewBadger(badgerDB *badger.DB, conf *env.Config) *BadgerFSM {
 	return &BadgerFSM{
 		db:   badgerDB,
 		conf: conf,

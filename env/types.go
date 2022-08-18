@@ -1,4 +1,6 @@
-package types
+package env
+
+import "crypto/ecdsa"
 
 // ConfigRaft configuration for raft node
 type ConfigRaft struct {
@@ -7,9 +9,10 @@ type ConfigRaft struct {
 	VolumeDir string `mapstructure:"volume_dir"`
 }
 
-// ConfigServer configuration for HTTP server
+// ConfigServer configuration for server
 type ConfigServer struct {
-	Port int `mapstructure:"port"`
+	Port       int `mapstructure:"port"`
+	PrivateKey *ecdsa.PrivateKey
 }
 
 // Config configuration
